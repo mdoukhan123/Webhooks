@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Any Sourcing Price Update - Step 1</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+    
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(19, 24, 108, 0.1);
+      border: 2px solid #13186c;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 30px;
+    }
+    h1 {
+      font-family: 'Roboto', sans-serif;
+      color: #13186c;
+      text-align: center;
+      margin: 0;
+      flex-grow: 1;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .message {
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 5px;
+      background: #f0f0f0;
+      line-height: 1.5;
+    }
+    .message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+      box-sizing: border-box;
+    }
+    input:focus {
+      outline: none;
+      border-color: #13186c;
+      box-shadow: 0 0 5px rgba(19, 24, 108, 0.2);
+    }
+    button {
+      background: #13186c;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #0a0f47;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .summary-link {
+      color: #13186c;
+      font-weight: bold;
+      text-decoration: none;
+    }
+    .summary-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="https://raw.githubusercontent.com/mdoukhan123/Images/main/AiGain%20Logo.png" alt="AiGAIN Logo" style="width: 96px; height: auto;">
+      <h1>Any Sourcing Price Update - Step 1</h1>
+      <div style="width: 50px;"></div>
+    </div>
+    
+    <div id="messages">
+      <div class="message">Hi! Please fill in the Vendor name, exchange rate, and attach the updated Price file (Excel .xlsx).</div>
+    </div>
+    
+    <div id="form">
+      <input type="text" id="vendor" placeholder="Enter vendor name">
+      <input type="number" id="exchangeRate" placeholder="Enter the exchange rate CNY/USD" step="0.01" min="0.01">
+      <input type="file" id="file" accept=".xlsx">
+      <button type="button" onclick="submitForm()">Start Price Update</button>
+    </div>
+  </div>
+  
+  <script>
+    function addMessage(text, className) {
+      var div = document.createElement('div');
+      div.className = 'message' + (className ? ' ' + className : '');
+      div.innerHTML = text;
+      document.getElementById('messages').appendChild(div);
+      return div;
+    }
+    
+    function submitForm() {
+      var vendor = document.getElementById('vendor').value.trim();
+      var exchangeRate = document.getElementById('exchangeRate').value.trim();
+      var file = document.getElementById('file').files[0];
+      
+      if (!vendor || !exchangeRate || !file) {
+        alert('Please fill all fields');
+        return;
+      }
+      
+      exchangeRate = exchangeRate.replace(',', '.');
+      var exchangeRateNum = parseFloat(exchangeRate);
+      
+      if (isNaN(exchangeRateNum) || exchangeRateNum <= 0) {
+        alert('Please enter a valid exchange rate greater than 0');
+        return;
+      }
+      
+      exchangeRate = exchangeRateNum.toFixed(2);
+      
+      addMessage('Processing... Please wait about 1 minute.');
+      document.getElementById('form').style.display = 'none';
+      
+      var formData = new FormData();
+      formData.append('Type the Vendor Name', vendor);
+      formData.append('Enter the exchange rate CNY/USD', exchangeRate);
+      formData.append('Upload Excel File', file);
+      
+      fetch('https://aigain.app.n8n.cloud/webhook/price-update-v2', {
+        method: 'POST',
+        body: formData  
+      })
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(function(data) {
+        document.getElementById('messages').innerHTML = '';
+        
+        if (data.success && data.googleSheetUrl) {
+          addMessage('✅ The Summary is completed!', 'success');
+          addMessage('<a href="' + data.googleSheetUrl + '" target="_blank" class="summary-link">Click here to open the Summary Sheet</a>', 'success');
+          addMessage('The link was also sent to you by email.', 'success');
+          addMessage('Have a great day! (you can close this tab now)', 'success');
+        } else if (data.success) {
+          addMessage('✅ The Summary is completed!', 'success');
+          addMessage('Check your email for the link.', 'success');
+          addMessage('Have a great day! (you can close this tab now)', 'success');
+        } else {
+          addMessage('An error occurred. Please try again.', 'error');
+        }
+      })
+      .catch(function(error) {
+        console.error('Error:', error);
+        addMessage('An error occurred. Please check your connection and try again.', 'error');
+        document.getElementById('form').style.display = 'block';
+      });
+    }
+  </script>
+</body>
+</html>
